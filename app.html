@@ -1084,7 +1084,8 @@ async function onAuthSuccess(user) {
   if (emailEl) emailEl.textContent = user.email;
   // Check subscription
   var sb = getSupabase();
-  var { data: sub } = await sb.from('subscriptions').select('*').eq('user_id', user.id).single();
+  var { data: subArr } = await sb.from('subscriptions').select('*').eq('user_id', user.id).limit(1);
+  var sub = subArr && subArr.length > 0 ? subArr[0] : null;
   var isActive = sub && (sub.status === 'active' || sub.status === 'trialing');
   if (!isActive) {
     document.getElementById('subOverlay').style.display = 'flex';
@@ -1132,7 +1133,8 @@ async function loadData() {
   var sb = getSupabase();
   var { data: { user } } = await sb.auth.getUser();
   if (!user) return;
-  var { data, error } = await sb.from('user_data').select('*').eq('user_id', user.id).single();
+  var { data: dataArr, error } = await sb.from('user_data').select('*').eq('user_id', user.id).limit(1);
+  var data = dataArr && dataArr.length > 0 ? dataArr[0] : null;
   if (data && data.db) {
     db.products = data.db.products || [];
     db.categories = data.db.categories || [];
