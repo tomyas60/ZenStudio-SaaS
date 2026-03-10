@@ -12,6 +12,7 @@ exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') return { statusCode: 405, headers, body: '' };
 
   try {
+    // Verify Supabase JWT
     const token = event.headers.authorization?.replace('Bearer ', '');
     if (!token) return { statusCode: 401, headers, body: JSON.stringify({ error: 'No token' }) };
 
@@ -19,8 +20,9 @@ exports.handler = async (event) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) return { statusCode: 401, headers, body: JSON.stringify({ error: 'Invalid token' }) };
 
-    let { data: sub } = await supabase.from('subscriptions').select('stripe_customer_id').eq('user_id', user.id).single();
-    let customerId = sub?.stripe_customer_id;
+    // Check if customer already exists
+    let { data: subs } = await supabase.from('subscriptions').select('stripe_customer_id').eq('user_id', user.id).limit(1);
+    let customerId = subs && subs.length > 0 ? subs[0].stripe_customer_id : null;
 
     if (!customerId) {
       const customer = await stripe.customers.create({
@@ -35,9 +37,14 @@ exports.handler = async (event) => {
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ['card'],
-      line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
+      line_items: [{
+        price: process.env.STRIPE_PRICE_ID,
+        quantity: 1
+      }],
       mode: 'subscription',
-      subscription_data: { trial_period_days: 14 },
+      subscription_data: {
+        trial_period_days: 14
+      },
       success_url: `${appUrl}/app.html?checkout=success`,
       cancel_url: `${appUrl}/app.html`,
       allow_promotion_codes: true
@@ -45,6 +52,7 @@ exports.handler = async (event) => {
 
     return { statusCode: 200, headers, body: JSON.stringify({ url: session.url }) };
   } catch (err) {
+    console.error(err);
     return { statusCode: 500, headers, body: JSON.stringify({ error: err.message }) };
   }
 };
