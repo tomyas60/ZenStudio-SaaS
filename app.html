@@ -867,7 +867,7 @@ function saveModal() {
 
 // ===================== ORDERS =====================
 // Your Stripe SECRET key — keep this private, only use in the dashboard on your own device
-// Stripe secret key is stored server-side in Netlify environment variables
+// Stripe secret key is server-side only (Netlify env vars)
 
 var allOrders = [];
 var orderFilter = 'all';
@@ -1011,18 +1011,20 @@ function saveOrderModal() {
 }
 
 // ===================== INIT =====================
+// ═══════════════════════════════════════════════
+// SUPABASE CONFIG — SET YOUR KEYS HERE
+// ═══════════════════════════════════════════════
+var SUPABASE_URL = 'https://evjvturahmionilohouj.supabase.co';
+var SUPABASE_ANON_KEY = 'YOUR_LEGACY_ANON_KEY_STARTING_WITH_eyJ';
+var STRIPE_PRICE_ID = 'price_1T90ISBGdD7rwWbka4Bbq1bu';
+var APP_URL = window.location.origin;
+
 initAuth();
 document.getElementById('addNewBtn').style.display = 'none';
 renderDashboard();
 
 // ===================== EXPORT / IMPORT =====================
-// ═══════════════════════════════════════════════
-// SUPABASE CONFIG — SET YOUR KEYS HERE
-// ═══════════════════════════════════════════════
-var SUPABASE_URL = 'https://evjvturahmionilohouj.supabase.co';
-var SUPABASE_ANON_KEY = 'sb_publishable_TmHl0MrjG_7X3nMr7dsSnQ_g_EptFlu';
-var STRIPE_PRICE_ID = 'price_1T90ISBGdD7rwWbka4Bbq1bu';
-var APP_URL = window.location.origin;
+// [config moved above]
 
 var _supabase = null;
 function getSupabase() {
