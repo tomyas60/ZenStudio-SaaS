@@ -181,6 +181,24 @@ td{padding:11px 14px;font-size:13.5px;vertical-align:middle}
 /* SAVE STATUS */
 .save-status{font-size:12px;color:var(--muted);transition:all .3s;margin-right:4px}
 
+
+/* RESTOCK RECOMMENDATIONS */
+.restock-section{margin-top:24px}
+.restock-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-top:14px}
+.restock-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;position:relative;overflow:hidden}
+.restock-card::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%;background:var(--orange)}
+.restock-card-name{font-weight:700;font-size:15px;margin-bottom:12px;padding-right:60px}
+.restock-badge{position:absolute;top:14px;right:14px;background:rgba(231,76,60,.12);color:#E74C3C;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:3px 8px;border-radius:20px}
+.restock-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.restock-stat{background:var(--surface2);border-radius:8px;padding:10px}
+.restock-stat-label{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.restock-stat-val{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--text)}
+.restock-recommendation{background:rgba(255,92,0,.08);border:1px solid rgba(255,92,0,.2);border-radius:8px;padding:12px;display:flex;align-items:center;justify-content:space-between}
+.restock-rec-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+.restock-rec-val{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--orange)}
+.restock-rec-unit{font-size:11px;color:var(--muted)}
+.restock-empty{text-align:center;padding:30px;color:var(--muted);font-size:14px;background:var(--surface);border:1px solid var(--border);border-radius:12px}
+
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -222,7 +240,7 @@ td{padding:11px 14px;font-size:13.5px;vertical-align:middle}
   <div class="sub-box">
     <div class="sub-title">Start Your Free Trial</div>
     <div class="sub-desc">Get full access to ZenStudio for 14 days free. No credit card needed to start.</div>
-    <div class="sub-price">£9.99</div>
+    <div class="sub-price">£12.99</div>
     <div class="sub-period">per month after trial</div>
     <div class="sub-trial">✓ 14 days completely free</div>
     <button class="sub-btn" onclick="startCheckout()">Start Free Trial</button>
@@ -309,6 +327,14 @@ td{padding:11px 14px;font-size:13.5px;vertical-align:middle}
         <table><thead><tr><th>Sale ID</th><th>Product</th><th>Qty</th><th>Revenue</th><th>Profit</th><th>Date</th></tr></thead>
         <tbody id="dash-sales"></tbody></table>
       </div>
+
+      <div class="restock-section">
+        <div class="section-header">
+          <div class="section-title">Restock Recommendations</div>
+        </div>
+        <div class="restock-grid" id="restock-grid"></div>
+      </div>
+
       <div class="section-header">
         <div class="section-title">Recent Transactions</div>
         <button class="btn btn-ghost btn-sm" onclick="navigateTo('transactions')">View All →</button>
@@ -519,6 +545,8 @@ function renderPage(page) {
 
 // ===================== DASHBOARD =====================
 function renderDashboard() {
+
+  renderRestockRecommendations();
 
   // ── Restock Banner ──
   (function(){
@@ -1144,6 +1172,59 @@ async function loadData() {
   }
   if (data && data.next_id) Object.assign(nextId, data.next_id);
   renderDashboard();
+}
+
+
+function renderRestockRecommendations() {
+  var grid = document.getElementById('restock-grid');
+  if (!grid) return;
+
+  // Calculate average daily sales for each product over last 30 days
+  var now = new Date();
+  var thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+  // Only show products with low stock (<=5)
+  var lowStock = db.products.filter(function(p){ return p.stock <= 5; });
+
+  if (lowStock.length === 0) {
+    grid.innerHTML = '<div class="restock-empty">✓ All products are well stocked — no restock needed right now.</div>';
+    return;
+  }
+
+  grid.innerHTML = lowStock.map(function(p) {
+    // Get sales for this product in last 30 days
+    var recentSales = db.sales.filter(function(s){
+      var d = new Date(s.date);
+      return s.productId === p.id && d >= thirtyDaysAgo;
+    });
+
+    var unitsSoldLast30 = recentSales.reduce(function(a,s){ return a + s.qty; }, 0);
+    var avgDailySales = unitsSoldLast30 / 30;
+
+    // Target: 30 days of stock
+    var targetDays = 30;
+    var recommended = Math.max(0, Math.ceil(avgDailySales * targetDays) - p.stock);
+
+    // Days of stock remaining
+    var daysLeft = avgDailySales > 0 ? Math.floor(p.stock / avgDailySales) : '∞';
+
+    var urgency = p.stock <= 2 ? 'URGENT' : 'LOW STOCK';
+
+    return '<div class="restock-card">' +
+      '<div class="restock-badge">' + urgency + '</div>' +
+      '<div class="restock-card-name">' + p.name + '</div>' +
+      '<div class="restock-stats">' +
+        '<div class="restock-stat"><div class="restock-stat-label">Current Stock</div><div class="restock-stat-val">' + p.stock + '</div></div>' +
+        '<div class="restock-stat"><div class="restock-stat-label">Sold (30 days)</div><div class="restock-stat-val">' + unitsSoldLast30 + '</div></div>' +
+        '<div class="restock-stat"><div class="restock-stat-label">Daily Avg</div><div class="restock-stat-val">' + avgDailySales.toFixed(1) + '</div></div>' +
+        '<div class="restock-stat"><div class="restock-stat-label">Days Left</div><div class="restock-stat-val">' + daysLeft + '</div></div>' +
+      '</div>' +
+      '<div class="restock-recommendation">' +
+        '<div><div class="restock-rec-label">Recommended Order</div><div class="restock-rec-unit">based on 30-day sales velocity</div></div>' +
+        '<div style="text-align:right"><div class="restock-rec-val">' + (recommended > 0 ? recommended : '—') + '</div><div class="restock-rec-unit">units</div></div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
 }
 
 // ─── INIT ───
