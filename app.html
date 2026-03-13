@@ -1202,7 +1202,7 @@ function renderRestockRecommendations() {
     var avgDailySales = unitsSoldLast30 / 30;
 
     // Target: 30 days of stock
-    var targetDays = 30;
+    var targetDays = 60;
     var recommended = Math.max(0, Math.ceil(avgDailySales * targetDays) - p.stock);
 
     // Days of stock remaining
