@@ -53,4 +53,185 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:20px 60px;display:fl
 .mock-title{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:1px;margin-bottom:20px}
 .mock-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
 .mock-card{background:#1a1a1a;border:1px solid var(--border);border-radius:8px;padding:16px}
-.mock-card-lab
+.mock-card-label{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.mock-card-val{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--orange)}
+.mock-table{background:#1a1a1a;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.mock-th{background:#222;padding:8px 12px;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:12px}
+.mock-tr{padding:10px 12px;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:12px;border-top:1px solid var(--border);font-size:12px}
+.mock-badge{background:rgba(46,204,113,.12);color:#2ECC71;border-radius:20px;padding:2px 8px;font-size:10px;width:fit-content}
+
+/* FEATURES */
+.features{padding:100px 40px;max-width:1100px;margin:0 auto}
+.section-label{font-size:11px;letter-spacing:4px;text-transform:uppercase;color:var(--orange);margin-bottom:16px;font-weight:600}
+.section-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,5vw,64px);letter-spacing:1px;margin-bottom:16px}
+.section-sub{font-size:16px;color:var(--muted);max-width:500px;line-height:1.7;margin-bottom:60px}
+.features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.feature-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;transition:border-color .2s}
+.feature-card:hover{border-color:rgba(255,92,0,.25)}
+.feature-icon{font-size:28px;margin-bottom:16px}
+.feature-title{font-weight:700;font-size:16px;margin-bottom:8px}
+.feature-desc{font-size:14px;color:var(--muted);line-height:1.6}
+
+/* PRICING */
+.pricing{padding:100px 40px;text-align:center;max-width:800px;margin:0 auto}
+.price-card{background:var(--surface);border:1px solid rgba(255,92,0,.25);border-radius:20px;padding:50px 60px;position:relative;overflow:hidden}
+.price-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--orange)}
+.price-badge{background:var(--orange);color:#fff;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:6px 16px;border-radius:20px;display:inline-block;margin-bottom:24px}
+.price-amount{font-family:'Bebas Neue',sans-serif;font-size:80px;letter-spacing:2px;line-height:1;color:var(--orange)}
+.price-period{font-size:18px;color:var(--muted);margin-bottom:8px}
+.price-trial{font-size:14px;color:var(--muted);margin-bottom:40px}
+.price-trial span{color:var(--orange);font-weight:600}
+.price-features{list-style:none;text-align:left;margin-bottom:40px;display:flex;flex-direction:column;gap:12px}
+.price-features li{display:flex;align-items:center;gap:10px;font-size:15px}
+.price-features li::before{content:'✓';color:var(--orange);font-weight:700;font-size:14px}
+.price-cta{background:var(--orange);color:#fff;padding:16px 40px;border-radius:10px;font-size:16px;font-weight:700;text-decoration:none;display:inline-block;transition:all .2s;font-family:'DM Sans',sans-serif;border:none;cursor:pointer;width:100%}
+.price-cta:hover{background:var(--orange-light);transform:translateY(-1px)}
+.price-note{font-size:12px;color:var(--muted);margin-top:16px}
+
+/* FOOTER */
+footer{border-top:1px solid var(--border);padding:40px 60px;display:flex;align-items:center;justify-content:space-between}
+.footer-logo{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--orange)}
+.footer-text{font-size:13px;color:var(--muted)}
+
+@media(max-width:768px){
+  nav{padding:16px 24px}
+  .features-grid{grid-template-columns:1fr}
+  .mock-sidebar{display:none}
+  .mock-content{left:0}
+  .mock-cards{grid-template-columns:1fr 1fr}
+  footer{flex-direction:column;gap:12px;text-align:center;padding:32px 24px}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">ZenStudio</div>
+  <div class="nav-links">
+    <a href="#features" class="nav-link">Features</a>
+    <a href="#pricing" class="nav-link">Pricing</a>
+    <a href="app.html" class="nav-link" style="color:var(--text)">Login</a>
+    <a href="app.html" class="nav-cta">Start Free Trial</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div style="position:relative">
+    <div class="hero-eyebrow">Supply Management Software</div>
+    <h1 class="hero-title">Run Your<br><span>Business</span><br>Smarter</h1>
+    <p class="hero-sub">Track inventory, manage suppliers, record sales, and monitor your profit — all in one clean dashboard built for small businesses.</p>
+    <div class="hero-btns">
+      <a href="app.html" class="btn-hero btn-primary">Start 14-Day Free Trial</a>
+      <a href="#features" class="btn-hero btn-secondary">See Features</a>
+    </div>
+    <p class="hero-note">No credit card required · <span>14 days free</span> · Then £12.99/month</p>
+  </div>
+</section>
+
+<div class="preview">
+  <div class="preview-wrap">
+    <div class="preview-bar">
+      <div class="dot dot-r"></div>
+      <div class="dot dot-y"></div>
+      <div class="dot dot-g"></div>
+      <div class="preview-url">zenstudio-hq.netlify.app</div>
+    </div>
+    <div class="preview-img">
+      <div class="mock-sidebar">
+        <div class="mock-logo"><div class="mock-logo-text">ZenStudio</div></div>
+        <div class="mock-nav-item active">⬡ Dashboard</div>
+        <div class="mock-nav-item">◫ Inventory</div>
+        <div class="mock-nav-item">◈ Categories</div>
+        <div class="mock-nav-item">◎ Suppliers</div>
+        <div class="mock-nav-item">⇄ Transactions</div>
+        <div class="mock-nav-item">£ Sales</div>
+        <div class="mock-nav-item">◻ Analytics</div>
+      </div>
+      <div class="mock-content">
+        <div class="mock-title">Dashboard</div>
+        <div class="mock-cards">
+          <div class="mock-card"><div class="mock-card-label">Revenue</div><div class="mock-card-val">£4,820</div></div>
+          <div class="mock-card"><div class="mock-card-label">Profit</div><div class="mock-card-val">£1,240</div></div>
+          <div class="mock-card"><div class="mock-card-label">Sales</div><div class="mock-card-val">38</div></div>
+          <div class="mock-card"><div class="mock-card-label">Units</div><div class="mock-card-val">94</div></div>
+        </div>
+        <div class="mock-table">
+          <div class="mock-th"><span>Product</span><span>Qty</span><span>Revenue</span><span>Status</span></div>
+          <div class="mock-tr"><span>Gold Ring</span><span>2</span><span>£90</span><div class="mock-badge">In Stock</div></div>
+          <div class="mock-tr"><span>Silver Chain</span><span>3</span><span>£120</span><div class="mock-badge">In Stock</div></div>
+          <div class="mock-tr"><span>Pearl Earrings</span><span>1</span><span>£65</span><div class="mock-badge">In Stock</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="features" id="features">
+  <div class="section-label">Everything You Need</div>
+  <h2 class="section-title">Built for Product<br>Based Businesses</h2>
+  <p class="section-sub">Whether you sell jewellery, clothing, or any physical product — ZenStudio keeps your business organised.</p>
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon">📦</div>
+      <div class="feature-title">Inventory Management</div>
+      <div class="feature-desc">Track stock levels, costs, and prices. Get automatic restock alerts when items run low.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">£</div>
+      <div class="feature-title">Sales Tracking</div>
+      <div class="feature-desc">Record every sale, calculate profit automatically, and see your revenue at a glance.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">◎</div>
+      <div class="feature-title">Supplier Management</div>
+      <div class="feature-desc">Store supplier details, WeChat IDs, and store links — everything in one place.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📊</div>
+      <div class="feature-title">Analytics</div>
+      <div class="feature-desc">Visual charts showing your best sellers, revenue trends, and profit margins over time.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">⚠</div>
+      <div class="feature-title">Restock Alerts</div>
+      <div class="feature-desc">Automatic warnings when stock drops to 2 or below so you never run out of your best sellers.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">☁</div>
+      <div class="feature-title">Cloud Saved</div>
+      <div class="feature-desc">Your data saves automatically and syncs across devices. Access your dashboard anywhere.</div>
+    </div>
+  </div>
+</section>
+
+<section class="pricing" id="pricing">
+  <div class="section-label">Simple Pricing</div>
+  <h2 class="section-title" style="margin-bottom:48px">One Plan.<br>Everything Included.</h2>
+  <div class="price-card">
+    <div class="price-badge">Most Popular</div>
+    <div class="price-amount">£12.99</div>
+    <div class="price-period">per month</div>
+    <div class="price-trial">Start with a <span>14-day free trial</span> — no credit card required</div>
+    <ul class="price-features">
+      <li>Full inventory management</li>
+      <li>Unlimited products & categories</li>
+      <li>Sales & transaction tracking</li>
+      <li>Supplier management</li>
+      <li>Analytics & reporting</li>
+      <li>Automatic restock alerts</li>
+      <li>Cloud data sync</li>
+      <li>Cancel anytime</li>
+    </ul>
+    <a href="app.html" class="price-cta">Start Free Trial</a>
+    <p class="price-note">No credit card needed for trial · Cancel anytime</p>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-logo">ZenStudio</div>
+  <div class="footer-text">© 2025 ZenStudio. Built for small businesses.</div>
+</footer>
+
+</body>
+</html>
