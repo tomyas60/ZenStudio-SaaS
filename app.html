@@ -1047,9 +1047,12 @@ var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 var STRIPE_PRICE_ID = 'price_1T90ISBGdD7rwWbka4Bbq1bu';
 var APP_URL = window.location.origin;
 
-initAuth();
-document.getElementById('addNewBtn').style.display = 'none';
-renderDashboard();
+document.addEventListener('DOMContentLoaded', function() {
+  initAuth();
+  var addNewBtn = document.getElementById('addNewBtn');
+  if (addNewBtn) addNewBtn.style.display = 'none';
+  renderDashboard();
+});
 
 // ===================== EXPORT / IMPORT =====================
 // [config moved above]
@@ -1292,3 +1295,19 @@ function importData(event) {
       }
       if (saved.nextId) {
         nextId.product = saved.nextId.product || 1;
+        nextId.category = saved.nextId.category || 1;
+        nextId.supplier = saved.nextId.supplier || 1;
+        nextId.transaction = saved.nextId.transaction || 1;
+        nextId.sale = saved.nextId.sale || 1;
+      }
+      renderDashboard();
+      renderPage(currentPage);
+      alert('Data imported successfully!');
+    } catch(err) {
+      alert('Import failed — make sure you are using a valid ZenStudio export file.');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
