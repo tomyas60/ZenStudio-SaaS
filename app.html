@@ -557,11 +557,13 @@ document.querySelectorAll('.nav-item[data-page]').forEach(function(el) {
   el.addEventListener('click', function() { navigateTo(el.getAttribute('data-page')); });
 });
 
-document.getElementById('modal').addEventListener('click', function(e) {
+var _modal = document.getElementById('modal');
+if (_modal) _modal.addEventListener('click', function(e) {
   if (e.target === this) closeModal();
 });
 
-document.getElementById('globalSearch').addEventListener('input', function() { renderPage(currentPage); });
+var _search = document.getElementById('globalSearch');
+if (_search) _search.addEventListener('input', function() { renderPage(currentPage); });
 
 function navigateTo(page) {
   currentPage = page;
@@ -1292,3 +1294,192 @@ async function authLogout() {
   var sb = getSupabase();
   await sb.auth.signOut();
   document.getElementById('authOverlay').style.display = 'flex';
+  document.getElementById('subOverlay').style.display = 'none';
+}
+
+async function onAuthSuccess(user) {
+  document.getElementById('authOverlay').style.display = 'none';
+  var emailEl = document.getElementById('userEmail');
+  if (emailEl) emailEl.textContent = user.email;
+  // Check subscription
+  var sb = getSupabase();
+  var { data: subArr } = await sb.from('subscriptions').select('*').eq('user_id', user.id).limit(1);
+  var sub = subArr && subArr.length > 0 ? subArr[0] : null;
+  var isActive = sub && (sub.status === 'active' || sub.status === 'trialing');
+  if (!isActive) {
+    document.getElementById('subOverlay').style.display = 'flex';
+    return;
+  }
+  document.getElementById('subOverlay').style.display = 'none';
+  await loadData();
+}
+
+async function startCheckout() {
+  var sb = getSupabase();
+  var { data: { session } } = await sb.auth.getSession();
+  if (!session) return;
+  var res = await fetch('/.netlify/functions/create-checkout', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token }
+  });
+  var data = await res.json();
+  if (data.url) window.location.href = data.url;
+}
+
+// ─── DATA FUNCTIONS ───
+function showSaveStatus(ok) {
+  var el = document.getElementById('saveStatus');
+  if (!el) return;
+  el.textContent = ok ? '✓ Saved' : '⚠ Save failed';
+  el.style.color = ok ? '#2ECC71' : '#E74C3C';
+  setTimeout(function(){ el.textContent = ''; }, 2500);
+}
+
+async function saveData() {
+  var sb = getSupabase();
+  var { data: { user } } = await sb.auth.getUser();
+  if (!user) return;
+  var { error } = await sb.from('user_data').upsert({
+    user_id: user.id,
+    db: db,
+    next_id: nextId,
+    updated_at: new Date().toISOString()
+  }, { onConflict: 'user_id' });
+  showSaveStatus(!error);
+}
+
+async function loadData() {
+  var sb = getSupabase();
+  var { data: { user } } = await sb.auth.getUser();
+  if (!user) return;
+  var { data: dataArr, error } = await sb.from('user_data').select('*').eq('user_id', user.id).limit(1);
+  var data = dataArr && dataArr.length > 0 ? dataArr[0] : null;
+  if (data && data.db) {
+    db.products = data.db.products || [];
+    db.categories = data.db.categories || [];
+    db.suppliers = data.db.suppliers || [];
+    db.transactions = data.db.transactions || [];
+    db.sales = data.db.sales || [];
+  }
+  if (data && data.next_id) Object.assign(nextId, data.next_id);
+  renderDashboard();
+}
+
+
+function renderRestockRecommendations() {
+  var grid = document.getElementById('restock-grid');
+  if (!grid) return;
+
+  // Calculate average daily sales for each product over last 30 days
+  var now = new Date();
+  var thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+  // Only show products with low stock (<=5)
+  var lowStock = db.products.filter(function(p){ return p.stock <= 5; });
+
+  if (lowStock.length === 0) {
+    grid.innerHTML = '<div class="restock-empty">✓ All products are well stocked — no restock needed right now.</div>';
+    return;
+  }
+
+  grid.innerHTML = lowStock.map(function(p) {
+    // Get sales for this product in last 30 days
+    var recentSales = db.sales.filter(function(s){
+      var d = new Date(s.date);
+      return s.productId === p.id && d >= thirtyDaysAgo;
+    });
+
+    var unitsSoldLast30 = recentSales.reduce(function(a,s){ return a + s.qty; }, 0);
+    var avgDailySales = unitsSoldLast30 / 30;
+
+    // Target: 30 days of stock
+    var targetDays = 60;
+    var recommended = Math.max(0, Math.ceil(avgDailySales * targetDays) - p.stock);
+
+    // Days of stock remaining
+    var daysLeft = avgDailySales > 0 ? Math.floor(p.stock / avgDailySales) : '∞';
+
+    var urgency = p.stock <= 2 ? 'URGENT' : 'LOW STOCK';
+
+    return '<div class="restock-card">' +
+      '<div class="restock-badge">' + urgency + '</div>' +
+      '<div class="restock-card-name">' + p.name + '</div>' +
+      '<div class="restock-stats">' +
+        '<div class="restock-stat"><div class="restock-stat-label">Current Stock</div><div class="restock-stat-val">' + p.stock + '</div></div>' +
+        '<div class="restock-stat"><div class="restock-stat-label">Sold (30 days)</div><div class="restock-stat-val">' + unitsSoldLast30 + '</div></div>' +
+        '<div class="restock-stat"><div class="restock-stat-label">Daily Avg</div><div class="restock-stat-val">' + avgDailySales.toFixed(1) + '</div></div>' +
+        '<div class="restock-stat"><div class="restock-stat-label">Days Left</div><div class="restock-stat-val">' + daysLeft + '</div></div>' +
+      '</div>' +
+      '<div class="restock-recommendation">' +
+        '<div><div class="restock-rec-label">Recommended Order</div><div class="restock-rec-unit">based on 30-day sales velocity</div></div>' +
+        '<div style="text-align:right"><div class="restock-rec-val">' + (recommended > 0 ? recommended : '—') + '</div><div class="restock-rec-unit">units</div></div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// ─── INIT ───
+async function initAuth() {
+  var sb = getSupabase();
+  var { data: { session } } = await sb.auth.getSession();
+  if (session && session.user) {
+    await onAuthSuccess(session.user);
+  }
+  // Handle return from Stripe checkout
+  var params = new URLSearchParams(window.location.search);
+  if (params.get('checkout') === 'success') {
+    setTimeout(async function(){
+      await onAuthSuccess(session.user);
+    }, 2000);
+  }
+}
+
+function exportData() {
+  var payload = JSON.stringify({ db: db, nextId: nextId }, null, 2);
+  var blob = new Blob([payload], { type: 'application/json' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  var today = new Date().toISOString().split('T')[0];
+  a.href = url;
+  a.download = 'zenstudio-data-' + today + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function importData(event) {
+  var file = event.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var saved = JSON.parse(e.target.result);
+      if (saved.db) {
+        db.products = saved.db.products || [];
+        db.categories = saved.db.categories || [];
+        db.suppliers = saved.db.suppliers || [];
+        db.transactions = saved.db.transactions || [];
+        db.sales = saved.db.sales || [];
+      }
+      if (saved.nextId) {
+        nextId.product = saved.nextId.product || 1;
+        nextId.category = saved.nextId.category || 1;
+        nextId.supplier = saved.nextId.supplier || 1;
+        nextId.transaction = saved.nextId.transaction || 1;
+        nextId.sale = saved.nextId.sale || 1;
+      }
+      renderDashboard();
+      renderPage(currentPage);
+      alert('Data imported successfully!');
+    } catch(err) {
+      alert('Import failed — make sure you are using a valid ZenStudio export file.');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+</script>
+</body>
+</html>
