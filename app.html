@@ -1237,9 +1237,28 @@ async function initAuth() {
   // Handle return from Stripe checkout
   var params = new URLSearchParams(window.location.search);
   if (params.get('checkout') === 'success') {
-    setTimeout(async function(){
-      await onAuthSuccess(session.user);
-    }, 2000);
+    // Webhook may take a few seconds — retry up to 8 times every 3s
+    var attempts = 0;
+    async function pollSubscription() {
+      attempts++;
+      var sb = getSupabase();
+      var { data: subArr } = await sb.from('subscriptions').select('*').eq('user_id', session.user.id).limit(1);
+      var sub = subArr && subArr.length > 0 ? subArr[0] : null;
+      var isActive = sub && (sub.status === 'active' || sub.status === 'trialing');
+      if (isActive) {
+        document.getElementById('subOverlay').style.display = 'none';
+        await loadData();
+        history.replaceState({}, '', window.location.pathname);
+      } else if (attempts < 8) {
+        setTimeout(pollSubscription, 3000);
+      } else {
+        var subOverlay = document.getElementById('subOverlay');
+        subOverlay.style.display = 'flex';
+        var note = subOverlay.querySelector('.sub-trial');
+        if (note) note.textContent = 'Payment received — please wait a moment and refresh the page.';
+      }
+    }
+    setTimeout(pollSubscription, 3000);
   }
 }
 
@@ -1273,22 +1292,3 @@ function importData(event) {
       }
       if (saved.nextId) {
         nextId.product = saved.nextId.product || 1;
-        nextId.category = saved.nextId.category || 1;
-        nextId.supplier = saved.nextId.supplier || 1;
-        nextId.transaction = saved.nextId.transaction || 1;
-        nextId.sale = saved.nextId.sale || 1;
-      }
-      renderDashboard();
-      renderPage(currentPage);
-      alert('Data imported successfully!');
-    } catch(err) {
-      alert('Import failed — make sure you are using a valid ZenStudio export file.');
-    }
-  };
-  reader.readAsText(file);
-  event.target.value = '';
-}
-
-</script>
-</body>
-</html>
