@@ -1234,9 +1234,11 @@ var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 var STRIPE_PRICE_ID = 'price_1T90ISBGdD7rwWbka4Bbq1bu';
 var APP_URL = window.location.origin;
 
-initAuth();
-document.getElementById('addNewBtn').style.display = 'none';
-try { renderDashboard(); } catch(e) { /* runs again after login */ }
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('addNewBtn').style.display = 'none';
+  try { renderDashboard(); } catch(e) {}
+  initAuth();
+});
 
 // ===================== EXPORT / IMPORT =====================
 // [config moved above]
@@ -1290,5 +1292,3 @@ async function authLogout() {
   var sb = getSupabase();
   await sb.auth.signOut();
   document.getElementById('authOverlay').style.display = 'flex';
-  document.getElementById('subOverlay').style.display = 'none';
-}
