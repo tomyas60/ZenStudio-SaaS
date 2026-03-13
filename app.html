@@ -1236,7 +1236,7 @@ var APP_URL = window.location.origin;
 
 initAuth();
 document.getElementById('addNewBtn').style.display = 'none';
-renderDashboard();
+try { renderDashboard(); } catch(e) { /* runs again after login */ }
 
 // ===================== EXPORT / IMPORT =====================
 // [config moved above]
