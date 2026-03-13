@@ -1239,7 +1239,7 @@ async function initAuth() {
   if (params.get('checkout') === 'success') {
     // Webhook may take a few seconds — retry up to 8 times every 3s
     var attempts = 0;
-    async function pollSubscription() {
+    var pollSubscription = async function() {
       attempts++;
       var sb = getSupabase();
       var { data: subArr } = await sb.from('subscriptions').select('*').eq('user_id', session.user.id).limit(1);
