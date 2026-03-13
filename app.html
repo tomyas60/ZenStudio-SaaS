@@ -368,6 +368,29 @@ td{padding:11px 14px;font-size:13.5px;vertical-align:middle}
       <div id="dash-alert" class="alert-bar">⚠ &nbsp;<span id="dash-alert-msg">items need restocking</span></div>
       <div id="dead-alert" class="dead-alert">🪦 &nbsp;<span id="dead-alert-msg">products with no sales in 30+ days</span></div>
 
+      <div class="hero-grid">
+        <div class="hero-card revenue">
+          <div class="hero-label">Total Revenue — All Time</div>
+          <div class="hero-value" id="d-revenue">£0</div>
+          <div class="hero-subs">
+            <div class="hero-sub-item"><label>Sales</label><span id="d-sales-count">0</span></div>
+            <div class="hero-sub-item"><label>Avg Sale</label><span id="d-avg-sale">£0</span></div>
+            <div class="hero-sub-item"><label>Units Sold</label><span id="d-units">0</span></div>
+          </div>
+          <div class="hero-change" id="d-rev-change">No sales recorded yet</div>
+        </div>
+        <div class="hero-card profit">
+          <div class="hero-label">Total Profit — All Time</div>
+          <div class="hero-value" id="d-profit">£0</div>
+          <div class="hero-subs">
+            <div class="hero-sub-item"><label>Margin</label><span id="d-margin">0%</span></div>
+            <div class="hero-sub-item"><label>Total Cost</label><span id="d-cost">£0</span></div>
+            <div class="hero-sub-item"><label>Transactions</label><span id="d-txn-count">0</span></div>
+          </div>
+          <div class="hero-change" id="d-prof-change">Add sales to see profit</div>
+        </div>
+      </div>
+
       <!-- FEATURE 10: Goals -->
       <div class="goals-grid">
         <div class="goal-card">
@@ -416,28 +439,6 @@ td{padding:11px 14px;font-size:13.5px;vertical-align:middle}
           <div class="stock-val-label">Potential Margin</div>
           <div class="stock-val-amount" id="stock-margin" style="color:var(--text)">£0</div>
           <div class="stock-val-sub">if all stock sold</div>
-        </div>
-      </div>
-      <div class="hero-grid">
-        <div class="hero-card revenue">
-          <div class="hero-label">Total Revenue — All Time</div>
-          <div class="hero-value" id="d-revenue">£0</div>
-          <div class="hero-subs">
-            <div class="hero-sub-item"><label>Sales</label><span id="d-sales-count">0</span></div>
-            <div class="hero-sub-item"><label>Avg Sale</label><span id="d-avg-sale">£0</span></div>
-            <div class="hero-sub-item"><label>Units Sold</label><span id="d-units">0</span></div>
-          </div>
-          <div class="hero-change" id="d-rev-change">No sales recorded yet</div>
-        </div>
-        <div class="hero-card profit">
-          <div class="hero-label">Total Profit — All Time</div>
-          <div class="hero-value" id="d-profit">£0</div>
-          <div class="hero-subs">
-            <div class="hero-sub-item"><label>Margin</label><span id="d-margin">0%</span></div>
-            <div class="hero-sub-item"><label>Total Cost</label><span id="d-cost">£0</span></div>
-            <div class="hero-sub-item"><label>Transactions</label><span id="d-txn-count">0</span></div>
-          </div>
-          <div class="hero-change" id="d-prof-change">Add sales to see profit</div>
         </div>
       </div>
       <div class="stats-grid">
