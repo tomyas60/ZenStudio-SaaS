@@ -183,7 +183,51 @@ td{padding:11px 14px;font-size:13.5px;vertical-align:middle}
 
 
 /* RESTOCK RECOMMENDATIONS */
-/* ── Quick Win Features ── */
+/* ── Features 6-10 ── */
+.goals-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px}
+.goal-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px}
+.goal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.goal-label{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:600}
+.goal-edit{background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;font-family:'DM Sans',sans-serif;text-decoration:underline}
+.goal-edit:hover{color:var(--orange)}
+.goal-amounts{display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px}
+.goal-current{font-family:'Bebas Neue',sans-serif;font-size:26px;color:var(--orange)}
+.goal-target{color:var(--muted)}
+.goal-bar{height:8px;background:var(--surface3);border-radius:4px;overflow:hidden;margin-bottom:6px}
+.goal-bar-fill{height:100%;border-radius:4px;background:var(--orange);transition:width .4s ease}
+.goal-bar-fill.on-track{background:var(--green)}
+.goal-bar-fill.danger{background:var(--red)}
+.goal-meta{font-size:11px;color:var(--muted)}
+.goal-input-row{display:flex;gap:8px;margin-top:10px;align-items:center}
+.goal-input{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;width:120px;outline:none}
+.goal-input:focus{border-color:var(--orange)}
+.goal-save{background:var(--orange);color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif}
+
+.stock-value-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px}
+.stock-val-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;text-align:center}
+.stock-val-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;font-weight:600}
+.stock-val-amount{font-family:'Bebas Neue',sans-serif;font-size:32px}
+.stock-val-sub{font-size:11px;color:var(--muted);margin-top:4px}
+
+.cat-perf-list{display:flex;flex-direction:column;gap:8px}
+.cat-perf-row{background:var(--surface2);border-radius:8px;padding:10px 14px}
+.cat-perf-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:13px}
+.cat-perf-bar{height:4px;background:var(--surface3);border-radius:2px;overflow:hidden}
+.cat-perf-fill{height:100%;border-radius:2px;background:var(--orange)}
+
+.breakeven-list{display:flex;flex-direction:column;gap:10px}
+.breakeven-row{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px}
+.breakeven-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.breakeven-name{font-weight:600;font-size:14px}
+.breakeven-meta{font-size:12px;color:var(--muted)}
+.breakeven-bar{height:6px;background:var(--surface3);border-radius:3px;overflow:hidden;margin-bottom:6px}
+.breakeven-fill{height:100%;border-radius:3px;background:var(--green)}
+.breakeven-fill.partial{background:var(--orange)}
+.breakeven-fill.zero{background:var(--red)}
+.breakeven-sub{font-size:11px;color:var(--muted)}
+
+.csv-btns{display:flex;gap:10px;margin-bottom:22px}
+@media(max-width:768px){.goals-grid{grid-template-columns:1fr}.stock-value-grid{grid-template-columns:1fr 1fr}}
 .trend-up{color:#2ECC71;font-size:13px;font-weight:600}
 .trend-down{color:#E74C3C;font-size:13px;font-weight:600}
 .trend-flat{color:var(--muted);font-size:13px}
@@ -323,6 +367,57 @@ td{padding:11px 14px;font-size:13.5px;vertical-align:middle}
     <div class="page active" id="page-dashboard">
       <div id="dash-alert" class="alert-bar">⚠ &nbsp;<span id="dash-alert-msg">items need restocking</span></div>
       <div id="dead-alert" class="dead-alert">🪦 &nbsp;<span id="dead-alert-msg">products with no sales in 30+ days</span></div>
+
+      <!-- FEATURE 10: Goals -->
+      <div class="goals-grid">
+        <div class="goal-card">
+          <div class="goal-header">
+            <div class="goal-label">🎯 Revenue Goal</div>
+            <button class="goal-edit" onclick="toggleGoalInput('rev')">Edit</button>
+          </div>
+          <div class="goal-current" id="goal-rev-current">£0</div>
+          <div class="goal-target" id="goal-rev-target">of £0 goal</div>
+          <div class="goal-bar"><div class="goal-bar-fill" id="goal-rev-bar" style="width:0%"></div></div>
+          <div class="goal-meta" id="goal-rev-meta">Set a goal to track progress</div>
+          <div class="goal-input-row" id="goal-rev-input" style="display:none">
+            <input class="goal-input" type="number" id="goal-rev-val" placeholder="e.g. 5000">
+            <button class="goal-save" onclick="saveGoal('rev')">Save</button>
+          </div>
+        </div>
+        <div class="goal-card">
+          <div class="goal-header">
+            <div class="goal-label">🎯 Profit Goal</div>
+            <button class="goal-edit" onclick="toggleGoalInput('profit')">Edit</button>
+          </div>
+          <div class="goal-current" id="goal-profit-current">£0</div>
+          <div class="goal-target" id="goal-profit-target">of £0 goal</div>
+          <div class="goal-bar"><div class="goal-bar-fill" id="goal-profit-bar" style="width:0%"></div></div>
+          <div class="goal-meta" id="goal-profit-meta">Set a goal to track progress</div>
+          <div class="goal-input-row" id="goal-profit-input" style="display:none">
+            <input class="goal-input" type="number" id="goal-profit-val" placeholder="e.g. 1500">
+            <button class="goal-save" onclick="saveGoal('profit')">Save</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- FEATURE 6: Stock Value -->
+      <div class="stock-value-grid">
+        <div class="stock-val-card">
+          <div class="stock-val-label">Stock at Cost</div>
+          <div class="stock-val-amount" id="stock-at-cost" style="color:var(--orange)">£0</div>
+          <div class="stock-val-sub">capital tied up</div>
+        </div>
+        <div class="stock-val-card">
+          <div class="stock-val-label">Stock at Sell Price</div>
+          <div class="stock-val-amount" id="stock-at-sell" style="color:var(--green)">£0</div>
+          <div class="stock-val-sub">potential revenue</div>
+        </div>
+        <div class="stock-val-card">
+          <div class="stock-val-label">Potential Margin</div>
+          <div class="stock-val-amount" id="stock-margin" style="color:var(--text)">£0</div>
+          <div class="stock-val-sub">if all stock sold</div>
+        </div>
+      </div>
       <div class="hero-grid">
         <div class="hero-card revenue">
           <div class="hero-label">Total Revenue — All Time</div>
@@ -369,6 +464,26 @@ td{padding:11px 14px;font-size:13.5px;vertical-align:middle}
           <div class="insight-title">📅 Monthly P&amp;L</div>
           <div style="overflow-x:auto"><table class="pnl-table"><thead><tr><th>Month</th><th>Revenue</th><th>Cost</th><th>Profit</th></tr></thead><tbody id="pnl-body"><tr><td colspan="4" style="color:var(--muted);padding:12px 10px">No sales data yet</td></tr></tbody></table></div>
         </div>
+      </div>
+
+      <!-- FEATURE 7: Category Performance -->
+      <div class="insight-grid">
+        <div class="insight-card">
+          <div class="insight-title">📂 Category Performance</div>
+          <div class="cat-perf-list" id="cat-perf-list"><div style="color:var(--muted);font-size:13px">No sales data yet</div></div>
+        </div>
+
+        <!-- FEATURE 8: Break-Even Tracker -->
+        <div class="insight-card">
+          <div class="insight-title">⚖️ Break-Even Tracker</div>
+          <div class="breakeven-list" id="breakeven-list"><div style="color:var(--muted);font-size:13px">No inventory data yet</div></div>
+        </div>
+      </div>
+
+      <!-- FEATURE 9: CSV Export -->
+      <div class="csv-btns">
+        <button class="btn btn-ghost" onclick="exportCSV('sales')">📄 Export Sales CSV</button>
+        <button class="btn btn-ghost" onclick="exportCSV('inventory')">📄 Export Inventory CSV</button>
       </div>
 
       <div class="restock-section">
@@ -745,7 +860,109 @@ function renderDashboard() {
     }).join('') : '<div style="color:var(--muted);font-size:13px">No sales data yet</div>');
   })();
 
-  // ── FEATURE 1: Monthly P&L ──
+  // ── FEATURE 6: Stock Value Summary ──
+  (function(){
+    var atCost = db.products.reduce(function(a,p){ return a + (p.stock||0)*(p.cost||0); }, 0);
+    var atSell = db.products.reduce(function(a,p){ return a + (p.stock||0)*(p.price||0); }, 0);
+    var margin = atSell - atCost;
+    setText('stock-at-cost', fmt(atCost));
+    setText('stock-at-sell', fmt(atSell));
+    setText('stock-margin', fmt(margin));
+  })();
+
+  // ── FEATURE 7: Category Performance ──
+  (function(){
+    var catMap = {};
+    db.sales.forEach(function(s){
+      var p = getProd(s.productId);
+      var cat = p ? (p.category || 'Uncategorised') : 'Uncategorised';
+      if (!catMap[cat]) catMap[cat] = {rev:0, profit:0};
+      catMap[cat].rev += s.qty*s.unitPrice;
+      catMap[cat].profit += s.qty*s.unitPrice - s.qty*s.unitCost - (s.shipping||0) - (s.adFees||0);
+    });
+    var entries = Object.entries(catMap).sort(function(a,b){ return b[1].rev-a[1].rev; });
+    var maxRev = entries.length ? entries[0][1].rev : 1;
+    setHtml('cat-perf-list', entries.length ? entries.map(function(e){
+      var cat=e[0], d=e[1];
+      var mg = d.rev>0 ? Math.round(d.profit/d.rev*100) : 0;
+      var w = Math.round(d.rev/maxRev*100);
+      var mgCol = mg>=30?'var(--green)':mg>=15?'var(--yellow)':'var(--orange)';
+      return '<div class="cat-perf-row">' +
+        '<div class="cat-perf-top"><span style="font-weight:600">'+esc(cat)+'</span><span class="mono" style="font-size:12px">'+fmt(d.rev)+' &nbsp;<span style="color:'+mgCol+'">'+mg+'% margin</span></span></div>' +
+        '<div class="cat-perf-bar"><div class="cat-perf-fill" style="width:'+w+'%"></div></div>' +
+        '</div>';
+    }).join('') : '<div style="color:var(--muted);font-size:13px">No sales data yet</div>');
+  })();
+
+  // ── FEATURE 8: Break-Even Tracker ──
+  (function(){
+    if (!db.products.length) return;
+    var now = new Date();
+    var monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    var monthlySales = {};
+    db.sales.forEach(function(s){
+      if (new Date(s.date) >= monthStart) {
+        monthlySales[s.productId] = (monthlySales[s.productId]||0) + s.qty;
+      }
+    });
+    var items = db.products.filter(function(p){ return p.stock > 0 && p.cost > 0; })
+      .map(function(p){
+        var invested = p.stock * p.cost;
+        var revenuePerUnit = p.price || 0;
+        var unitsNeeded = revenuePerUnit > 0 ? Math.ceil(invested / revenuePerUnit) : null;
+        var soldThisMonth = monthlySales[p.id] || 0;
+        var pct = unitsNeeded ? Math.min(100, Math.round(soldThisMonth/unitsNeeded*100)) : 0;
+        return {name:p.name, invested:invested, unitsNeeded:unitsNeeded, soldThisMonth:soldThisMonth, pct:pct};
+      }).sort(function(a,b){ return b.invested-a.invested; }).slice(0,6);
+    setHtml('breakeven-list', items.length ? items.map(function(item){
+      var fillClass = item.pct>=100?'':'item.pct>=50?\'partial\':\'zero\'';
+      fillClass = item.pct>=100 ? '' : item.pct>=50 ? 'partial' : 'zero';
+      var statusText = item.unitsNeeded
+        ? (item.pct>=100 ? '✓ Break-even reached!' : item.soldThisMonth+' of '+item.unitsNeeded+' units sold this month')
+        : 'Set a sell price to calculate';
+      return '<div class="breakeven-row">' +
+        '<div class="breakeven-top"><span class="breakeven-name">'+esc(item.name)+'</span><span class="breakeven-meta">'+fmt(item.invested)+' invested</span></div>' +
+        '<div class="breakeven-bar"><div class="breakeven-fill '+fillClass+'" style="width:'+item.pct+'%"></div></div>' +
+        '<div class="breakeven-sub">'+statusText+'</div>' +
+        '</div>';
+    }).join('') : '<div style="color:var(--muted);font-size:13px">Add products with cost & price to see break-even</div>');
+  })();
+
+  // ── FEATURE 10: Goals ──
+  (function(){
+    var goals = JSON.parse(localStorage.getItem('zs_goals')||'{}');
+    var now = new Date();
+    var monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    var daysInMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+    var dayOfMonth = now.getDate();
+    var daysLeft = daysInMonth - dayOfMonth;
+
+    var thisRev = 0, thisProfit = 0;
+    db.sales.forEach(function(s){
+      if (new Date(s.date) >= monthStart) {
+        thisRev += s.qty*s.unitPrice;
+        thisProfit += s.qty*s.unitPrice - s.qty*s.unitCost - (s.shipping||0) - (s.adFees||0);
+      }
+    });
+
+    function renderGoal(type, current, goalVal) {
+      var pct = goalVal > 0 ? Math.min(100, Math.round(current/goalVal*100)) : 0;
+      var onTrack = dayOfMonth > 0 && goalVal > 0 ? (current / dayOfMonth * daysInMonth) >= goalVal * 0.9 : false;
+      var barClass = pct >= 100 ? 'on-track' : onTrack ? 'on-track' : pct < 30 ? 'danger' : '';
+      var metaText = goalVal > 0
+        ? (pct>=100 ? '🎉 Goal reached!' : daysLeft+' days left — '+(onTrack?'on track ✓':'behind pace ↓'))
+        : 'Set a goal to track progress';
+      setText('goal-'+type+'-current', fmt(current));
+      setText('goal-'+type+'-target', goalVal > 0 ? 'of '+fmt(goalVal)+' goal' : 'no goal set');
+      setText('goal-'+type+'-meta', metaText);
+      var bar = document.getElementById('goal-'+type+'-bar');
+      if (bar) { bar.style.width = pct+'%'; bar.className = 'goal-bar-fill '+barClass; }
+      var inp = document.getElementById('goal-'+type+'-val');
+      if (inp && goalVal) inp.value = goalVal;
+    }
+    renderGoal('rev', thisRev, goals.rev || 0);
+    renderGoal('profit', thisProfit, goals.profit || 0);
+  })();
   (function(){
     var byMonth = {};
     db.sales.forEach(function(s){
@@ -1241,6 +1458,49 @@ document.addEventListener('DOMContentLoaded', function() {
   try { renderDashboard(); } catch(e) {}
   initAuth();
 });
+
+function toggleGoalInput(type) {
+  var row = document.getElementById('goal-'+type+'-input');
+  if (row) row.style.display = row.style.display === 'none' ? 'flex' : 'none';
+}
+
+function saveGoal(type) {
+  var val = parseFloat(document.getElementById('goal-'+type+'-val').value) || 0;
+  var goals = JSON.parse(localStorage.getItem('zs_goals')||'{}');
+  goals[type] = val;
+  localStorage.setItem('zs_goals', JSON.stringify(goals));
+  var row = document.getElementById('goal-'+type+'-input');
+  if (row) row.style.display = 'none';
+  renderDashboard();
+}
+
+function exportCSV(type) {
+  var rows, filename;
+  if (type === 'sales') {
+    rows = [['Sale ID','Product','Qty','Unit Price','Unit Cost','Revenue','Profit','Shipping','Ad Fees','Date']];
+    db.sales.forEach(function(s){
+      var p = getProd(s.productId);
+      var rev = s.qty*s.unitPrice;
+      var profit = s.qty*s.unitPrice - s.qty*s.unitCost - (s.shipping||0) - (s.adFees||0);
+      rows.push([s.saleId, p?p.name:'Unknown', s.qty, s.unitPrice, s.unitCost, rev.toFixed(2), profit.toFixed(2), s.shipping||0, s.adFees||0, s.date]);
+    });
+    filename = 'zenstudio-sales-'+new Date().toISOString().split('T')[0]+'.csv';
+  } else {
+    rows = [['SKU','Name','Category','Supplier','Stock','Cost Price','Sell Price','Stock Value (Cost)','Stock Value (Sell)','Status']];
+    db.products.forEach(function(p){
+      rows.push([p.sku, p.name, p.category, p.supplier, p.stock, p.cost, p.price, (p.stock*p.cost).toFixed(2), (p.stock*p.price).toFixed(2), stockStatus(p.stock)]);
+    });
+    filename = 'zenstudio-inventory-'+new Date().toISOString().split('T')[0]+'.csv';
+  }
+  var csv = rows.map(function(r){ return r.map(function(c){ return '"'+String(c||'').replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
+  var blob = new Blob([csv], {type:'text/csv'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
 // ===================== EXPORT / IMPORT =====================
 // [config moved above]
