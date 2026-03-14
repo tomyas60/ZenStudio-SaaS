@@ -1,8 +1,9 @@
 {
   "name": "zenstudio-saas",
   "version": "1.0.0",
+  "description": "ZenStudio Supply Management SaaS",
   "dependencies": {
-    "stripe": "^14.0.0",
-    "@supabase/supabase-js": "^2.0.0"
+    "@stripe/stripe-js": "^4.0.0",
+    "stripe": "^14.0.0"
   }
 }
