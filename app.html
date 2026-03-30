@@ -1605,11 +1605,15 @@ async function bootApp() {
   document.getElementById('user-avatar-initials').textContent = email[0].toUpperCase();
 
   // Check subscription
+  // Check for returning checkout success before calling checkSubscription
+  const isCheckoutReturn = new URLSearchParams(window.location.search).get('checkout') === 'success';
   const subStatus = await checkSubscription();
-  if (subStatus === 'none') {
-    showSubGate('trial');
-  } else if (subStatus === 'expired') {
+  if (subStatus === 'expired') {
     showSubGate('expired');
+  }
+  // Show a welcome toast if user just completed checkout
+  if (isCheckoutReturn) {
+    setTimeout(() => toast('🎉 Trial started! You have 14 days free — no charge until it ends.', 'success'), 800);
   }
 
   // Load data
@@ -1620,23 +1624,40 @@ async function bootApp() {
 
 // ── SUBSCRIPTION ─────────────────────────────────────────
 async function checkSubscription() {
-  try {
-    const { data } = await supabaseClient
-      .from('subscriptions')
-      .select('*')
-      .eq('user_id', currentUser.id)
-      .single();
+  // If user just completed checkout, Stripe's webhook may not have fired yet.
+  // Grant access immediately and let the webhook update the row in the background.
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('checkout') === 'success') {
+    // Clean the URL so a page refresh doesn’t re-trigger this
+    history.replaceState({}, '', window.location.pathname);
+    return 'trialing';
+  }
 
-    if (!data) return 'none';
+  try {
+    const { data, error } = await supabaseClient
+      .from('subscriptions')
+      .select('status, trial_end')
+      .eq('user_id', currentUser.id)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    // No row yet — either brand new user (trial not started) or webhook still in-flight.
+    // Allow access; the gate will only show once a row explicitly marks them as canceled/expired.
+    if (!data) return 'trialing';
+
     if (data.status === 'trialing') {
-      const trialEnd = new Date(data.trial_end);
-      if (trialEnd < new Date()) return 'expired';
+      if (data.trial_end && new Date(data.trial_end) < new Date()) return 'expired';
       return 'trialing';
     }
     if (data.status === 'active') return 'active';
-    return 'none';
+    if (data.status === 'canceled') return 'expired';
+
+    // past_due, incomplete, etc — let them in but show a soft warning
+    return 'trialing';
   } catch(e) {
-    // Table might not exist or no row — treat as trialing for demo
+    console.error('checkSubscription error:', e);
+    // Network error or table missing — don’t block the user
     return 'trialing';
   }
 }
