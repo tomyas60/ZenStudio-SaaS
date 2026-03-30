@@ -1628,41 +1628,99 @@ async function bootApp() {
 }
 
 // ── SUBSCRIPTION ─────────────────────────────────────────
+// We check TWO sources in order:
+// 1. The subscriptions table (populated by Stripe webhook)
+// 2. A fallback flag in user_data.db.subscription_started (written on checkout success)
+// This handles the case where the Stripe webhook is delayed or misconfigured.
+
 async function checkSubscription() {
-  // If returning from Stripe checkout, webhook may not have fired yet.
-  // Grant access immediately — webhook will update the row shortly after.
+  // Returning from Stripe checkout — write a fallback flag and grant access immediately.
+  // The webhook will update the subscriptions table in the background.
   const params = new URLSearchParams(window.location.search);
   if (params.get('checkout') === 'success') {
     history.replaceState({}, '', window.location.pathname);
+    // Persist a fallback marker in user_data so future logins also work
+    // even if the webhook never fires (e.g. webhook not configured yet)
+    await writeSubscriptionFallback();
     return 'trialing';
   }
 
   try {
-    const { data, error } = await supabaseClient
+    // --- Source 1: subscriptions table (Stripe webhook) ---
+    const { data: subData } = await supabaseClient
       .from('subscriptions')
       .select('status, trial_end')
       .eq('user_id', currentUser.id)
       .maybeSingle();
 
-    if (error) throw error;
+    if (subData) {
+      if (subData.status === 'active') return 'active';
+      if (subData.status === 'trialing') {
+        if (subData.trial_end && new Date(subData.trial_end) < new Date()) return 'expired';
+        return 'trialing';
+      }
+      if (subData.status === 'canceled') {
+        // Even if canceled, check fallback — might be a webhook race
+        // Fall through to Source 2
+      }
+    }
 
-    // No row = user has never started a trial — prompt them to add card
-    if (!data) return 'no_subscription';
+    // --- Source 2: fallback flag in user_data ---
+    const { data: udData } = await supabaseClient
+      .from('user_data')
+      .select('db')
+      .eq('user_id', currentUser.id)
+      .maybeSingle();
 
-    if (data.status === 'trialing') {
-      // Trial period: check if it has expired
-      if (data.trial_end && new Date(data.trial_end) < new Date()) return 'expired';
+    if (udData?.db?.subscription_started) {
+      const trialEnd = udData.db.trial_end_date
+        ? new Date(udData.db.trial_end_date)
+        : null;
+      // If webhook said canceled AND trial is genuinely over, block
+      if (subData?.status === 'canceled' && trialEnd && trialEnd < new Date()) {
+        return 'expired';
+      }
+      // Otherwise grant access — they did start a subscription
       return 'trialing';
     }
-    if (data.status === 'active') return 'active';
-    if (data.status === 'canceled') return 'expired';
 
-    // past_due / incomplete / etc — still let them in, Stripe handles payment recovery
+    // No subscription row AND no fallback flag — truly new user
+    if (!subData) return 'no_subscription';
+
+    // Has a row but status is something unexpected (past_due etc) — let them in
     return 'trialing';
+
   } catch(e) {
     console.error('checkSubscription error:', e);
-    // On network error, don’t block — default to allowing access
-    return 'trialing';
+    return 'trialing'; // Never block on error
+  }
+}
+
+async function writeSubscriptionFallback() {
+  try {
+    // Read current db blob, add fallback marker, write back
+    const { data } = await supabaseClient
+      .from('user_data')
+      .select('db, next_id')
+      .eq('user_id', currentUser.id)
+      .maybeSingle();
+
+    const trialStart = new Date();
+    const trialEnd = new Date(trialStart);
+    trialEnd.setDate(trialEnd.getDate() + 14);
+
+    const currentDb = data?.db || { products: [], categories: [], suppliers: [], transactions: [], sales: [] };
+    currentDb.subscription_started = true;
+    currentDb.trial_start_date = trialStart.toISOString();
+    currentDb.trial_end_date = trialEnd.toISOString();
+
+    await supabaseClient.from('user_data').upsert({
+      user_id: currentUser.id,
+      db: currentDb,
+      next_id: data?.next_id || { product: 1, category: 1, supplier: 1, transaction: 1, sale: 1 },
+    }, { onConflict: 'user_id' });
+  } catch(e) {
+    console.error('writeSubscriptionFallback error:', e);
   }
 }
 
@@ -1746,11 +1804,22 @@ async function loadData() {
 }
 
 async function persistData() {
-  // Write the full db blob back in one upsert
   try {
+    // First fetch the current row to preserve subscription flags and other metadata
+    const { data: existing } = await supabaseClient
+      .from('user_data').select('db').eq('user_id', currentUser.id).maybeSingle();
+
+    // Preserve any subscription/metadata keys already in db
+    const preservedKeys = {};
+    if (existing?.db) {
+      const keysToPreserve = ['subscription_started','trial_start_date','trial_end_date'];
+      keysToPreserve.forEach(k => { if (existing.db[k] !== undefined) preservedKeys[k] = existing.db[k]; });
+    }
+
     const { error } = await supabaseClient.from('user_data').upsert({
       user_id: currentUser.id,
       db: {
+        ...preservedKeys,
         products:     userData.products,
         categories:   [...new Set(userData.products.map(p => p.category).filter(Boolean))],
         suppliers:    userData.suppliers,
