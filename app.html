@@ -1785,8 +1785,17 @@ async function loadData() {
     if (error) throw error;
 
     if (data && data.db) {
-      userData.products  = data.db.products  || [];
-      userData.sales     = data.db.sales     || [];
+      // Coerce numeric fields in case they were stored as strings in JSONB
+      userData.products = (data.db.products || []).map(p => ({
+        ...p,
+        cost: +p.cost || 0, price: +p.price || 0,
+        stock: +p.stock || 0, threshold: +p.threshold || 0
+      }));
+      userData.sales = (data.db.sales || []).map(s => ({
+        ...s,
+        qty: +s.qty || 0, unitPrice: +s.unitPrice || 0,
+        revenue: +s.revenue || 0, cost: +s.cost || 0, profit: +s.profit || 0
+      }));
       userData.suppliers = data.db.suppliers || [];
       nextId = { ...{ product: 1, supplier: 1, sale: 1 }, ...(data.next_id || {}) };
     } else {
@@ -1924,8 +1933,8 @@ function goTo(page) {
 
 // ── DASHBOARD RENDER ─────────────────────────────────────
 function renderDashboard() {
-  const totalRevenue = userData.sales.reduce((s,t) => s+t.revenue, 0);
-  const totalProfit = userData.sales.reduce((s,t) => s+t.profit, 0);
+  const totalRevenue = userData.sales.reduce((s,t) => s+(+t.revenue||0), 0);
+  const totalProfit = userData.sales.reduce((s,t) => s+(+t.profit||0), 0);
   const totalProducts = userData.products.length;
   const lowStockItems = userData.products.filter(p => p.stock <= p.threshold && p.stock > 0);
   const outOfStock = userData.products.filter(p => p.stock === 0 || p.stock <= 0);
@@ -1981,7 +1990,7 @@ function calcDailyTotals(days, field, offset=0) {
   for (let i = offset; i < offset+days; i++) {
     const d = new Date(now); d.setDate(d.getDate()-i);
     const ds = d.toISOString().split('T')[0];
-    userData.sales.filter(s => s.date===ds).forEach(s => total += s[field]||0);
+    userData.sales.filter(s => s.date===ds).forEach(s => total += (+s[field]||0));
   }
   return total;
 }
@@ -1994,8 +2003,8 @@ function renderRevenueCharts() {
     const d = new Date(); d.setDate(d.getDate()-i);
     const ds = d.toISOString().split('T')[0];
     labels.push(d.toLocaleDateString('en-GB',{weekday:'short'}));
-    const dayRev = userData.sales.filter(s=>s.date===ds).reduce((s,t)=>s+t.revenue,0);
-    const dayProfit = userData.sales.filter(s=>s.date===ds).reduce((s,t)=>s+t.profit,0);
+    const dayRev = userData.sales.filter(s=>s.date===ds).reduce((s,t)=>s+(+t.revenue||0),0);
+    const dayProfit = userData.sales.filter(s=>s.date===ds).reduce((s,t)=>s+(+t.profit||0),0);
     revData.push(dayRev);
     profitData.push(dayProfit);
   }
@@ -2059,7 +2068,7 @@ function renderAIRecs(lowItems) {
 
   // Restock recommendations
   lowItems.slice(0, 3).forEach(p => {
-    const supplier = userData.suppliers.find(s => s.id === p.supplierId);
+    const supplier = userData.suppliers.find(s => matchId(s.id, p.supplierId));
     const avgDailySales = calcAvgDailySales(p.id);
     const suggested = Math.max(p.threshold * 3, Math.ceil(avgDailySales * 14));
     recs.push({
@@ -2098,10 +2107,10 @@ function renderAIRecs(lowItems) {
 }
 
 function calcAvgDailySales(productId) {
-  const sales = userData.sales.filter(s => s.productId === productId);
+  const sales = userData.sales.filter(s => matchId(s.productId, productId));
   if (!sales.length) return 0;
   const dates = [...new Set(sales.map(s => s.date))];
-  const totalQty = sales.reduce((s,t) => s+t.qty, 0);
+  const totalQty = sales.reduce((s,t) => s+(+t.qty||0), 0);
   return dates.length > 0 ? totalQty / Math.max(dates.length, 1) : 0;
 }
 
@@ -2158,7 +2167,7 @@ function renderInventory() {
 
   tbody.innerHTML = products.map(p => {
     const margin = p.price > 0 ? Math.round((p.price-p.cost)/p.price*100) : 0;
-    const supplier = userData.suppliers.find(s => s.id === p.supplierId);
+    const supplier = userData.suppliers.find(s => matchId(s.id, p.supplierId));
     const stockPct = p.threshold > 0 ? Math.min(100, (p.stock/Math.max(p.threshold*2,1))*100) : 50;
     const stockColor = p.stock <= 0 ? 'var(--error)' : p.stock <= p.threshold ? 'var(--warning)' : 'var(--success)';
     const statusBadge = p.stock <= 0 ? '<span class="badge badge-red">Out</span>' :
@@ -2234,7 +2243,7 @@ function renderSuppliers() {
   }
 
   tbody.innerHTML = suppliers.map(s => {
-    const productCount = userData.products.filter(p => p.supplierId === s.id).length;
+    const productCount = userData.products.filter(p => matchId(p.supplierId, s.id)).length;
     return `<tr>
       <td><strong>${esc(s.name)}</strong></td>
       <td style="color:var(--text-muted)">${esc(s.contact||'—')}</td>
@@ -2255,10 +2264,10 @@ function renderSuppliers() {
 
 // ── ANALYTICS RENDER ─────────────────────────────────────
 function renderAnalytics() {
-  const totalRevenue = userData.sales.reduce((s,t) => s+t.revenue, 0);
-  const totalProfit = userData.sales.reduce((s,t) => s+t.profit, 0);
-  const totalCost = userData.sales.reduce((s,t) => s+t.cost, 0);
-  const totalUnits = userData.sales.reduce((s,t) => s+t.qty, 0);
+  const totalRevenue = userData.sales.reduce((s,t) => s+(+t.revenue||0), 0);
+  const totalProfit = userData.sales.reduce((s,t) => s+(+t.profit||0), 0);
+  const totalCost = userData.sales.reduce((s,t) => s+(+t.cost||0), 0);
+  const totalUnits = userData.sales.reduce((s,t) => s+(+t.qty||0), 0);
   const marginPct = totalRevenue > 0 ? Math.round((totalProfit/totalRevenue)*100) : 0;
   const inventoryValue = userData.products.reduce((s,p) => s+(p.cost||0)*(p.stock||0), 0);
 
@@ -2276,7 +2285,7 @@ function renderAnalytics() {
     const d = new Date(); d.setMonth(d.getMonth()-i);
     const ym = d.toISOString().slice(0,7);
     monthLabels.push(d.toLocaleDateString('en-GB',{month:'short',year:'2-digit'}));
-    const rev = userData.sales.filter(s => s.date.startsWith(ym)).reduce((s,t) => s+t.revenue, 0);
+    const rev = userData.sales.filter(s => s.date.startsWith(ym)).reduce((s,t) => s+(+t.revenue||0), 0);
     monthRevData.push(rev);
   }
   buildBarChart('chart-monthly-rev', monthLabels, monthRevData, '#3b82f6', 'Revenue (£)');
@@ -2284,7 +2293,7 @@ function renderAnalytics() {
   // Category chart
   const catAgg = {};
   userData.sales.forEach(s => {
-    const product = userData.products.find(p => p.id === s.productId);
+    const product = userData.products.find(p => matchId(p.id, s.productId));
     const cat = product?.category || 'Uncategorised';
     catAgg[cat] = (catAgg[cat]||0) + s.revenue;
   });
@@ -2376,13 +2385,13 @@ function openProductModal(id) {
   sel.innerHTML = '<option value="">None</option>' + userData.suppliers.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('');
 
   if (isEdit) {
-    const p = userData.products.find(x => x.id === id);
+    const p = userData.products.find(x => matchId(x.id, id));
     if (!p) return;
     ['name','sku','category','cost','price','stock','threshold','notes'].forEach(f => {
       const el = document.getElementById('p-'+f);
       if (el) el.value = p[f] !== undefined ? p[f] : '';
     });
-    sel.value = p.supplierId || '';
+    sel.value = matchId(s.id, p.supplierId) || '';
   } else {
     ['name','sku','category','cost','price','stock','threshold','notes'].forEach(f => {
       const el = document.getElementById('p-'+f);
@@ -2413,7 +2422,7 @@ async function saveProduct() {
 
   // Update local state first, then persist
   if (id) {
-    userData.products = userData.products.map(p => p.id == id ? product : p);
+    userData.products = userData.products.map(p => matchId(p.id, id) ? product : p);
   } else {
     userData.products.push(product);
   }
@@ -2437,7 +2446,7 @@ function openSaleModal(id) {
   const today = new Date().toISOString().split('T')[0];
 
   if (isEdit) {
-    const s = userData.sales.find(x => x.id === id);
+    const s = userData.sales.find(x => matchId(x.id, id));
     if (!s) return;
     pSel.value = s.productId || '';
     document.getElementById('s-qty').value = s.qty;
@@ -2485,7 +2494,7 @@ async function saveSale() {
 
   const qty = parseInt(document.getElementById('s-qty').value) || 1;
   const unitPrice = parseFloat(document.getElementById('s-price').value) || 0;
-  const product = userData.products.find(p => p.id === productId);
+  const product = userData.products.find(p => matchId(p.id, productId));
 
   const sale = {
     id: id || newId('sale'),
@@ -2502,13 +2511,13 @@ async function saveSale() {
 
   // Update local state first, then persist once
   if (id) {
-    userData.sales = userData.sales.map(s => s.id == id ? sale : s);
+    userData.sales = userData.sales.map(s => matchId(s.id, id) ? sale : s);
   } else {
     userData.sales.push(sale);
     // Deduct stock from product
     if (product) {
       product.stock = Math.max(0, (product.stock||0) - qty);
-      userData.products = userData.products.map(p => p.id === productId ? product : p);
+      userData.products = userData.products.map(p => matchId(p.id, productId) ? product : p);
     }
   }
   await persistData();
@@ -2526,7 +2535,7 @@ function openSupplierModal(id) {
   document.getElementById('supplier-id').value = id || '';
 
   if (isEdit) {
-    const s = userData.suppliers.find(x => x.id === id);
+    const s = userData.suppliers.find(x => matchId(x.id, id));
     if (!s) return;
     ['name','contact','phone','email','wechat','storeLink','notes'].forEach(f => {
       const el = document.getElementById('sup-'+f.replace('storeLink','link'));
@@ -2559,7 +2568,7 @@ async function saveSupplier() {
 
   // Update local state first, then persist
   if (id) {
-    userData.suppliers = userData.suppliers.map(s => s.id == id ? supplier : s);
+    userData.suppliers = userData.suppliers.map(s => matchId(s.id, id) ? supplier : s);
   } else {
     userData.suppliers.push(supplier);
   }
@@ -2579,9 +2588,9 @@ function confirmDelete(type, id, name) {
 
 async function doDelete(type, id) {
   // Remove from local state first, then persist
-  if (type === 'product') userData.products = userData.products.filter(p => p.id != id);
-  if (type === 'sale') userData.sales = userData.sales.filter(s => s.id != id);
-  if (type === 'supplier') userData.suppliers = userData.suppliers.filter(s => s.id != id);
+  if (type === 'product') userData.products = userData.products.filter(p => !matchId(p.id, id));
+  if (type === 'sale') userData.sales = userData.sales.filter(s => !matchId(s.id, id));
+  if (type === 'supplier') userData.suppliers = userData.suppliers.filter(s => !matchId(s.id, id));
   await persistData();
   closeModal('modal-delete');
   if (type === 'product') { renderInventory(); renderDashboard(); }
@@ -2620,7 +2629,14 @@ function toast(msg, type='success') {
 
 // ── UTILS ─────────────────────────────────────────────────
 function fmt(n) {
-  return Number(n).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const num = parseFloat(n);
+  if (isNaN(num)) return '0.00';
+  return num.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// Coerce an ID from HTML string back to the correct type for comparison
+function matchId(a, b) {
+  return String(a) === String(b);
 }
 
 function esc(s) {
