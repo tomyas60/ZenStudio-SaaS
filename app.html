@@ -1786,17 +1786,25 @@ async function loadData() {
 
     if (data && data.db) {
       // Coerce numeric fields in case they were stored as strings in JSONB
+      // Coerce IDs to strings and numbers to floats on load
       userData.products = (data.db.products || []).map(p => ({
         ...p,
+        id: String(p.id),
+        supplierId: p.supplierId ? String(p.supplierId) : '',
         cost: +p.cost || 0, price: +p.price || 0,
         stock: +p.stock || 0, threshold: +p.threshold || 0
       }));
       userData.sales = (data.db.sales || []).map(s => ({
         ...s,
+        id: String(s.id),
+        productId: s.productId ? String(s.productId) : '',
         qty: +s.qty || 0, unitPrice: +s.unitPrice || 0,
         revenue: +s.revenue || 0, cost: +s.cost || 0, profit: +s.profit || 0
       }));
-      userData.suppliers = data.db.suppliers || [];
+      userData.suppliers = (data.db.suppliers || []).map(s => ({
+        ...s,
+        id: String(s.id)
+      }));
       nextId = { ...{ product: 1, supplier: 1, sale: 1 }, ...(data.next_id || {}) };
     } else {
       // New user — create their row
@@ -1897,11 +1905,11 @@ async function deleteRecord(id) {
   await persistData();
 }
 
-// Generate stable numeric IDs per type
+// Generate stable string IDs per type — always strings to avoid === vs == issues with HTML inputs
 function newId(type) {
   const id = nextId[type] || 1;
   nextId[type] = id + 1;
-  return id;
+  return String(id);
 }
 
 // ── NAVIGATION ───────────────────────────────────────────
@@ -2068,7 +2076,7 @@ function renderAIRecs(lowItems) {
 
   // Restock recommendations
   lowItems.slice(0, 3).forEach(p => {
-    const supplier = userData.suppliers.find(s => matchId(s.id, p.supplierId));
+    const supplier = userData.suppliers.find(s => s.id === p.supplierId);
     const avgDailySales = calcAvgDailySales(p.id);
     const suggested = Math.max(p.threshold * 3, Math.ceil(avgDailySales * 14));
     recs.push({
@@ -2107,7 +2115,7 @@ function renderAIRecs(lowItems) {
 }
 
 function calcAvgDailySales(productId) {
-  const sales = userData.sales.filter(s => matchId(s.productId, productId));
+  const sales = userData.sales.filter(s => s.productId === productId);
   if (!sales.length) return 0;
   const dates = [...new Set(sales.map(s => s.date))];
   const totalQty = sales.reduce((s,t) => s+(+t.qty||0), 0);
@@ -2167,7 +2175,7 @@ function renderInventory() {
 
   tbody.innerHTML = products.map(p => {
     const margin = p.price > 0 ? Math.round((p.price-p.cost)/p.price*100) : 0;
-    const supplier = userData.suppliers.find(s => matchId(s.id, p.supplierId));
+    const supplier = userData.suppliers.find(s => s.id === p.supplierId);
     const stockPct = p.threshold > 0 ? Math.min(100, (p.stock/Math.max(p.threshold*2,1))*100) : 50;
     const stockColor = p.stock <= 0 ? 'var(--error)' : p.stock <= p.threshold ? 'var(--warning)' : 'var(--success)';
     const statusBadge = p.stock <= 0 ? '<span class="badge badge-red">Out</span>' :
@@ -2243,7 +2251,7 @@ function renderSuppliers() {
   }
 
   tbody.innerHTML = suppliers.map(s => {
-    const productCount = userData.products.filter(p => matchId(p.supplierId, s.id)).length;
+    const productCount = userData.products.filter(p => p.supplierId === s.id).length;
     return `<tr>
       <td><strong>${esc(s.name)}</strong></td>
       <td style="color:var(--text-muted)">${esc(s.contact||'—')}</td>
@@ -2293,7 +2301,7 @@ function renderAnalytics() {
   // Category chart
   const catAgg = {};
   userData.sales.forEach(s => {
-    const product = userData.products.find(p => matchId(p.id, s.productId));
+    const product = userData.products.find(p => p.id === s.productId);
     const cat = product?.category || 'Uncategorised';
     catAgg[cat] = (catAgg[cat]||0) + s.revenue;
   });
@@ -2385,13 +2393,13 @@ function openProductModal(id) {
   sel.innerHTML = '<option value="">None</option>' + userData.suppliers.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('');
 
   if (isEdit) {
-    const p = userData.products.find(x => matchId(x.id, id));
+    const p = userData.products.find(x => x.id === id);
     if (!p) return;
     ['name','sku','category','cost','price','stock','threshold','notes'].forEach(f => {
       const el = document.getElementById('p-'+f);
       if (el) el.value = p[f] !== undefined ? p[f] : '';
     });
-    sel.value = matchId(s.id, p.supplierId) || '';
+    sel.value = p.supplierId || '';
   } else {
     ['name','sku','category','cost','price','stock','threshold','notes'].forEach(f => {
       const el = document.getElementById('p-'+f);
@@ -2416,13 +2424,13 @@ async function saveProduct() {
     price: parseFloat(document.getElementById('p-price').value) || 0,
     stock: parseInt(document.getElementById('p-stock').value) || 0,
     threshold: parseInt(document.getElementById('p-threshold').value) || 5,
-    supplierId: document.getElementById('p-supplier').value,
+    supplierId: document.getElementById('p-supplier').value || '',
     notes: document.getElementById('p-notes').value.trim(),
   };
 
   // Update local state first, then persist
   if (id) {
-    userData.products = userData.products.map(p => matchId(p.id, id) ? product : p);
+    userData.products = userData.products.map(p => p.id === id ? product : p);
   } else {
     userData.products.push(product);
   }
@@ -2446,7 +2454,7 @@ function openSaleModal(id) {
   const today = new Date().toISOString().split('T')[0];
 
   if (isEdit) {
-    const s = userData.sales.find(x => matchId(x.id, id));
+    const s = userData.sales.find(x => x.id === id);
     if (!s) return;
     pSel.value = s.productId || '';
     document.getElementById('s-qty').value = s.qty;
@@ -2494,7 +2502,7 @@ async function saveSale() {
 
   const qty = parseInt(document.getElementById('s-qty').value) || 1;
   const unitPrice = parseFloat(document.getElementById('s-price').value) || 0;
-  const product = userData.products.find(p => matchId(p.id, productId));
+  const product = userData.products.find(p => p.id === productId);
 
   const sale = {
     id: id || newId('sale'),
@@ -2511,13 +2519,13 @@ async function saveSale() {
 
   // Update local state first, then persist once
   if (id) {
-    userData.sales = userData.sales.map(s => matchId(s.id, id) ? sale : s);
+    userData.sales = userData.sales.map(s => s.id === id ? sale : s);
   } else {
     userData.sales.push(sale);
     // Deduct stock from product
     if (product) {
       product.stock = Math.max(0, (product.stock||0) - qty);
-      userData.products = userData.products.map(p => matchId(p.id, productId) ? product : p);
+      userData.products = userData.products.map(p => p.id === productId ? product : p);
     }
   }
   await persistData();
@@ -2535,7 +2543,7 @@ function openSupplierModal(id) {
   document.getElementById('supplier-id').value = id || '';
 
   if (isEdit) {
-    const s = userData.suppliers.find(x => matchId(x.id, id));
+    const s = userData.suppliers.find(x => x.id === id);
     if (!s) return;
     ['name','contact','phone','email','wechat','storeLink','notes'].forEach(f => {
       const el = document.getElementById('sup-'+f.replace('storeLink','link'));
@@ -2568,7 +2576,7 @@ async function saveSupplier() {
 
   // Update local state first, then persist
   if (id) {
-    userData.suppliers = userData.suppliers.map(s => matchId(s.id, id) ? supplier : s);
+    userData.suppliers = userData.suppliers.map(s => s.id === id ? supplier : s);
   } else {
     userData.suppliers.push(supplier);
   }
@@ -2588,9 +2596,9 @@ function confirmDelete(type, id, name) {
 
 async function doDelete(type, id) {
   // Remove from local state first, then persist
-  if (type === 'product') userData.products = userData.products.filter(p => !matchId(p.id, id));
-  if (type === 'sale') userData.sales = userData.sales.filter(s => !matchId(s.id, id));
-  if (type === 'supplier') userData.suppliers = userData.suppliers.filter(s => !matchId(s.id, id));
+  if (type === 'product') userData.products = userData.products.filter(p => !p.id === id);
+  if (type === 'sale') userData.sales = userData.sales.filter(s => !s.id === id);
+  if (type === 'supplier') userData.suppliers = userData.suppliers.filter(s => !s.id === id);
   await persistData();
   closeModal('modal-delete');
   if (type === 'product') { renderInventory(); renderDashboard(); }
@@ -2635,7 +2643,7 @@ function fmt(n) {
 }
 
 // Coerce an ID from HTML string back to the correct type for comparison
-function matchId(a, b) {
+function a === b {
   return String(a) === String(b);
 }
 
