@@ -1517,8 +1517,9 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 
 // ── STATE ────────────────────────────────────────────────
 let currentUser = null;
-window.userData = { products: [], sales: [], suppliers: [] };
-var userData = window.userData;
+// Single source of truth — referenced by all functions
+var userData = { products: [], sales: [], suppliers: [] };
+window.userData = userData;
 let invStatusFilter = 'all';
 let charts = {};
 
@@ -1620,7 +1621,7 @@ async function bootApp() {
 // ── SUBSCRIPTION ─────────────────────────────────────────
 async function checkSubscription() {
   try {
-    const { data } = await supabase
+    const { data } = await supabaseClient
       .from('subscriptions')
       .select('*')
       .eq('user_id', currentUser.id)
@@ -1680,20 +1681,60 @@ async function startCheckout() {
 }
 
 // ── DATA LAYER ──────────────────────────────────────────
+// Schema: user_data table has columns: user_id, db (jsonb), next_id (jsonb), updated_at
+// db = { products: [], categories: [], suppliers: [], transactions: [], sales: [] }
+// next_id = { product: 1, category: 1, supplier: 1, transaction: 1, sale: 1 }
+
+let nextId = { product: 1, supplier: 1, sale: 1 };
+
 async function loadData() {
-  // Try Supabase first
   try {
-    const [productsRes, salesRes, suppliersRes] = await Promise.all([
-      supabaseClient.from('user_data').select('*').eq('user_id', currentUser.id).eq('type','product'),
-      supabaseClient.from('user_data').select('*').eq('user_id', currentUser.id).eq('type','sale'),
-      supabaseClient.from('user_data').select('*').eq('user_id', currentUser.id).eq('type','supplier'),
-    ]);
-    userData.products = (productsRes.data || []).map(r => ({id: r.id, ...r.data}));
-    userData.sales = (salesRes.data || []).map(r => ({id: r.id, ...r.data}));
-    userData.suppliers = (suppliersRes.data || []).map(r => ({id: r.id, ...r.data}));
+    const { data, error } = await supabaseClient
+      .from('user_data')
+      .select('db, next_id')
+      .eq('user_id', currentUser.id)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    if (data && data.db) {
+      userData.products  = data.db.products  || [];
+      userData.sales     = data.db.sales     || [];
+      userData.suppliers = data.db.suppliers || [];
+      nextId = { ...{ product: 1, supplier: 1, sale: 1 }, ...(data.next_id || {}) };
+    } else {
+      // New user — create their row
+      await supabaseClient.from('user_data').upsert({
+        user_id: currentUser.id,
+        db: { products: [], categories: [], suppliers: [], transactions: [], sales: [] },
+        next_id: { product: 1, category: 1, supplier: 1, transaction: 1, sale: 1 }
+      }, { onConflict: 'user_id' });
+    }
   } catch(e) {
-    // Fallback to demo data
-    loadDemoData();
+    console.error('loadData error:', e);
+    // Leave userData as empty — user will start fresh
+  }
+}
+
+async function persistData() {
+  // Write the full db blob back in one upsert
+  try {
+    const { error } = await supabaseClient.from('user_data').upsert({
+      user_id: currentUser.id,
+      db: {
+        products:     userData.products,
+        categories:   [...new Set(userData.products.map(p => p.category).filter(Boolean))],
+        suppliers:    userData.suppliers,
+        transactions: [],
+        sales:        userData.sales,
+      },
+      next_id: nextId,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id' });
+    if (error) throw error;
+  } catch(e) {
+    console.error('persistData error:', e);
+    toast('Save failed — check your connection.', 'error');
   }
 }
 
@@ -1738,27 +1779,22 @@ function generateDemoSales() {
   return sales;
 }
 
+// saveRecord is now just persistData — kept for API compatibility
 async function saveRecord(type, data) {
-  try {
-    const payload = { user_id: currentUser.id, type, data };
-    if (data.id && !data.id.startsWith('p') && !data.id.startsWith('sup') && !data.id.startsWith('sale_')) {
-      const { data: rec, error } = await supabaseClient.from('user_data').update({ data }).eq('id', data.id).select().single();
-      if (error) throw error;
-      return rec;
-    } else {
-      const { data: rec, error } = await supabaseClient.from('user_data').insert(payload).select().single();
-      if (error) throw error;
-      return { ...data, id: rec.id };
-    }
-  } catch(e) {
-    return data; // fallback — just use local
-  }
+  await persistData();
+  return data;
 }
 
+// deleteRecord just triggers a full save (data already removed from userData before calling)
 async function deleteRecord(id) {
-  try {
-    await supabaseClient.from('user_data').delete().eq('id', id);
-  } catch(e) { /* local only fallback */ }
+  await persistData();
+}
+
+// Generate stable numeric IDs per type
+function newId(type) {
+  const id = nextId[type] || 1;
+  nextId[type] = id + 1;
+  return id;
 }
 
 // ── NAVIGATION ───────────────────────────────────────────
@@ -2265,7 +2301,7 @@ async function saveProduct() {
   if (!name) return toast('Product name is required.', 'error');
 
   const product = {
-    id: id || ('p_'+Date.now()),
+    id: id || newId('product'),
     name,
     sku: document.getElementById('p-sku').value.trim(),
     category: document.getElementById('p-category').value.trim(),
@@ -2277,12 +2313,13 @@ async function saveProduct() {
     notes: document.getElementById('p-notes').value.trim(),
   };
 
-  const saved = await saveRecord('product', product);
+  // Update local state first, then persist
   if (id) {
-    userData.products = userData.products.map(p => p.id === id ? saved : p);
+    userData.products = userData.products.map(p => p.id == id ? product : p);
   } else {
-    userData.products.push(saved);
+    userData.products.push(product);
   }
+  await persistData();
 
   closeModal('modal-product');
   renderInventory();
@@ -2353,7 +2390,7 @@ async function saveSale() {
   const product = userData.products.find(p => p.id === productId);
 
   const sale = {
-    id: id || ('sale_'+Date.now()),
+    id: id || newId('sale'),
     productId,
     productName: product?.name || '?',
     qty,
@@ -2365,18 +2402,18 @@ async function saveSale() {
     notes: document.getElementById('s-notes').value.trim(),
   };
 
-  const saved = await saveRecord('sale', sale);
-
+  // Update local state first, then persist once
   if (id) {
-    userData.sales = userData.sales.map(s => s.id === id ? saved : s);
+    userData.sales = userData.sales.map(s => s.id == id ? sale : s);
   } else {
-    userData.sales.push(saved);
-    // Deduct stock
+    userData.sales.push(sale);
+    // Deduct stock from product
     if (product) {
       product.stock = Math.max(0, (product.stock||0) - qty);
-      await saveRecord('product', product);
+      userData.products = userData.products.map(p => p.id === productId ? product : p);
     }
   }
+  await persistData();
 
   closeModal('modal-sale');
   renderSales();
@@ -2412,7 +2449,7 @@ async function saveSupplier() {
   if (!name) return toast('Supplier name is required.', 'error');
 
   const supplier = {
-    id: id || ('sup_'+Date.now()),
+    id: id || newId('supplier'),
     name,
     contact: document.getElementById('sup-contact').value.trim(),
     phone: document.getElementById('sup-phone').value.trim(),
@@ -2422,12 +2459,13 @@ async function saveSupplier() {
     notes: document.getElementById('sup-notes').value.trim(),
   };
 
-  const saved = await saveRecord('supplier', supplier);
+  // Update local state first, then persist
   if (id) {
-    userData.suppliers = userData.suppliers.map(s => s.id === id ? saved : s);
+    userData.suppliers = userData.suppliers.map(s => s.id == id ? supplier : s);
   } else {
-    userData.suppliers.push(saved);
+    userData.suppliers.push(supplier);
   }
+  await persistData();
 
   closeModal('modal-supplier');
   renderSuppliers();
@@ -2442,10 +2480,11 @@ function confirmDelete(type, id, name) {
 }
 
 async function doDelete(type, id) {
-  await deleteRecord(id);
-  if (type === 'product') userData.products = userData.products.filter(p => p.id !== id);
-  if (type === 'sale') userData.sales = userData.sales.filter(s => s.id !== id);
-  if (type === 'supplier') userData.suppliers = userData.suppliers.filter(s => s.id !== id);
+  // Remove from local state first, then persist
+  if (type === 'product') userData.products = userData.products.filter(p => p.id != id);
+  if (type === 'sale') userData.sales = userData.sales.filter(s => s.id != id);
+  if (type === 'supplier') userData.suppliers = userData.suppliers.filter(s => s.id != id);
+  await persistData();
   closeModal('modal-delete');
   if (type === 'product') { renderInventory(); renderDashboard(); }
   if (type === 'sale') { renderSales(); renderDashboard(); }
