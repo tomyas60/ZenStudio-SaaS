@@ -1065,7 +1065,7 @@
       <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Automatic restock alerts</li>
     </ul>
     <button class="btn btn-primary btn-full" id="checkout-btn" onclick="startCheckout()">Start Free Trial</button>
-    <p style="margin-top:12px;font-size:12px;color:var(--text-faint)">No credit card needed for trial · Cancel anytime</p>
+    <p id="gate-note" style="margin-top:12px;font-size:12px;color:var(--text-faint)">No charge for 14 days · Cancel anytime · £12.99/mo after trial</p>
   </div>
 </div>
 
@@ -1605,13 +1605,18 @@ async function bootApp() {
   document.getElementById('user-avatar-initials').textContent = email[0].toUpperCase();
 
   // Check subscription
-  // Check for returning checkout success before calling checkSubscription
   const isCheckoutReturn = new URLSearchParams(window.location.search).get('checkout') === 'success';
   const subStatus = await checkSubscription();
-  if (subStatus === 'expired') {
+
+  if (subStatus === 'no_subscription') {
+    // Brand new user — prompt them to start trial (add card)
+    showSubGate('new');
+  } else if (subStatus === 'expired') {
+    // Trial ended or subscription canceled
     showSubGate('expired');
   }
-  // Show a welcome toast if user just completed checkout
+  // else: trialing or active — full access
+
   if (isCheckoutReturn) {
     setTimeout(() => toast('🎉 Trial started! You have 14 days free — no charge until it ends.', 'success'), 800);
   }
@@ -1624,11 +1629,10 @@ async function bootApp() {
 
 // ── SUBSCRIPTION ─────────────────────────────────────────
 async function checkSubscription() {
-  // If user just completed checkout, Stripe's webhook may not have fired yet.
-  // Grant access immediately and let the webhook update the row in the background.
+  // If returning from Stripe checkout, webhook may not have fired yet.
+  // Grant access immediately — webhook will update the row shortly after.
   const params = new URLSearchParams(window.location.search);
   if (params.get('checkout') === 'success') {
-    // Clean the URL so a page refresh doesn’t re-trigger this
     history.replaceState({}, '', window.location.pathname);
     return 'trialing';
   }
@@ -1642,22 +1646,22 @@ async function checkSubscription() {
 
     if (error) throw error;
 
-    // No row yet — either brand new user (trial not started) or webhook still in-flight.
-    // Allow access; the gate will only show once a row explicitly marks them as canceled/expired.
-    if (!data) return 'trialing';
+    // No row = user has never started a trial — prompt them to add card
+    if (!data) return 'no_subscription';
 
     if (data.status === 'trialing') {
+      // Trial period: check if it has expired
       if (data.trial_end && new Date(data.trial_end) < new Date()) return 'expired';
       return 'trialing';
     }
     if (data.status === 'active') return 'active';
     if (data.status === 'canceled') return 'expired';
 
-    // past_due, incomplete, etc — let them in but show a soft warning
+    // past_due / incomplete / etc — still let them in, Stripe handles payment recovery
     return 'trialing';
   } catch(e) {
     console.error('checkSubscription error:', e);
-    // Network error or table missing — don’t block the user
+    // On network error, don’t block — default to allowing access
     return 'trialing';
   }
 }
@@ -1667,15 +1671,19 @@ function showSubGate(reason) {
   const title = document.getElementById('gate-title');
   const desc = document.getElementById('gate-desc');
   const btn = document.getElementById('checkout-btn');
+  const note = document.getElementById('gate-note');
 
   if (reason === 'expired') {
-    title.textContent = 'Trial Expired';
-    desc.textContent = 'Your 14-day free trial has ended. Subscribe to continue using ZenStudio.';
-    btn.textContent = 'Subscribe Now — £12.99/mo';
+    title.textContent = 'Subscription Ended';
+    desc.textContent = 'Your trial or subscription has ended. Resubscribe to continue using ZenStudio.';
+    btn.textContent = 'Subscribe — £12.99/mo';
+    if (note) note.textContent = 'Your data is safe and will be restored on resubscription.';
   } else {
+    // 'new' — brand new user, no subscription row yet
     title.textContent = 'Start Your Free Trial';
-    desc.textContent = 'Get full access to ZenStudio for 14 days, free. No credit card required.';
-    btn.textContent = 'Start Free Trial';
+    desc.textContent = 'Get full access to ZenStudio free for 14 days. Add your card now — you won’t be charged until the trial ends.';
+    btn.textContent = 'Start 14-Day Free Trial';
+    if (note) note.textContent = 'No charge for 14 days · Cancel anytime · £12.99/mo after trial';
   }
   gate.classList.add('open');
 }
