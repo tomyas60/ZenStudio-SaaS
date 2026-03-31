@@ -2642,10 +2642,7 @@ function fmt(n) {
   return num.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// Coerce an ID from HTML string back to the correct type for comparison
-function a === b {
-  return String(a) === String(b);
-}
+// (matchId removed — IDs are now always strings, use === directly)
 
 function esc(s) {
   if (s === null || s === undefined) return '';
